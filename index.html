@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Diary</title>
+  <style>
+    :root{--bg:#0b0f19;--card:#111a2e;--line:#1b2640;--muted:#9bb0e6;--fg:#e8eefc;--sub:#cbd7ff;--btn:#4c7dff;}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;background:var(--bg);color:var(--fg)}
+    header{position:sticky;top:0;background:#0b0f19cc;backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
+    .wrap{max-width:980px;margin:0 auto;padding:14px 16px}
+    .top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .brand{font-weight:800}
+    .muted{color:var(--muted);font-size:12px}
+    .grid{display:grid;gap:12px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+    input, textarea, select{width:100%;border-radius:12px;border:1px solid #22345f;background:#0c1326;color:var(--fg);padding:10px 12px}
+    textarea{min-height:160px;resize:vertical}
+    button{border:0;border-radius:12px;padding:10px 12px;background:var(--btn);color:#fff;font-weight:700;cursor:pointer}
+    button.secondary{background:#1a2746}
+    button.danger{background:#ff4c5e}
+    button.ghost{background:transparent;border:1px solid #22345f;color:var(--fg)}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row>*{flex:1}
+    .pill{font-size:12px;color:#b8c7ff;background:#0c1326;border:1px solid #22345f;padding:6px 10px;border-radius:999px;display:inline-block}
+    .nav{display:flex;gap:8px;flex-wrap:wrap}
+    .nav a{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+    .list{display:grid;gap:10px}
+    .item{padding:12px;border-radius:14px;border:1px solid var(--line);background:#0c1326}
+    .item h3{margin:0 0 6px;font-size:16px}
+    .item p{margin:0;color:var(--sub);white-space:pre-wrap}
+    .right{display:flex;gap:8px;flex-wrap:wrap}
+    .hidden{display:none}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .kpi{display:flex;gap:8px;flex-wrap:wrap}
+    .kpi .pill{opacity:.9}
+    .topic{border:1px solid var(--line);background:#0c1326;border-radius:16px;padding:12px}
+    .topicHead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{
+      user-select:none;
+      cursor:pointer;
+      border-radius:999px;
+      padding:8px 10px;
+      border:1px solid #22345f;
+      background:transparent;
+      color:var(--fg);
+      font-size:12px;
+      line-height:1;
+    }
+    .chip.on{background:#22345f}
+    .divider{height:1px;background:var(--line);margin:10px 0}
+    .small{font-size:11px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <div>
+      <div class="brand">Diary</div>
+      <div class="muted">保存：ブラウザ内（端末内）｜消えるのが怖いなら「バックアップ（JSON）」を定期実行</div>
+    </div>
+    <div class="nav">
+      <a href="#/edit"><button class="secondary">Write</button></a>
+      <a href="#/home"><button class="secondary">Home</button></a>
+      <a href="#/export"><button class="secondary">まとめ</button></a>
+      <a href="#/tags"><button class="secondary">タグ管理</button></a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap grid">
+  <!-- HOME -->
+  <section id="pageHome" class="grid hidden">
+    <div class="card grid">
+      <div class="row">
+        <div>
+          <label class="muted">日付を選んで開く</label>
+          <input id="homeDate" type="date">
+        </div>
+        <div>
+          <label class="muted">その月のまとめへ</label>
+          <input id="homeMonth" type="month">
+        </div>
+      </div>
+      <div class="row">
+        <button id="openDateBtn">この日付を書く/開く</button>
+        <button class="secondary" id="openMonthExportBtn">この月をまとめる</button>
+      </div>
+      <div class="kpi" id="homeKpi"></div>
+    </div>
+
+    <div class="card grid">
+      <div class="row">
+        <div>
+          <label class="muted">検索（トピック単位：タイトル/本文/タグ）</label>
+          <input id="q" placeholder="キーワード">
+        </div>
+        <div>
+          <label class="muted">タグ絞り込み（部分一致OK）</label>
+          <input id="tagFilter" placeholder="例：仕事">
+        </div>
+      </div>
+      <div class="muted" id="stats"></div>
+      <div class="list" id="list"></div>
+    </div>
+  </section>
+
+  <!-- EDIT -->
+  <section id="pageEdit" class="grid hidden">
+    <div class="card grid">
+      <div class="row">
+        <div>
+          <label class="muted">日付</label>
+          <input id="date" type="date">
+        </div>
+        <div>
+          <label class="muted">気分（任意・日付共通）</label>
+          <select id="mood">
+            <option value="">-</option>
+            <option>😄 最高</option>
+            <option>🙂 良い</option>
+            <option>😐 普通</option>
+            <option>😕 微妙</option>
+            <option>😫 しんどい</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="copyDayBtn" class="secondary">この日をコピー</button>
+        <button id="addTopicBtn">トピック追加</button>
+      </div>
+
+      <div id="topics" class="grid"></div>
+
+      <div class="row">
+        <button id="saveBtn">保存 / 更新</button>
+        <button class="secondary" id="clearBtn">入力クリア</button>
+        <button class="danger" id="deleteBtn">この日付を削除</button>
+      </div>
+
+      <div class="muted">Tip：後で要約したいなら、トピックを「仕事/学び/生活」みたいに分けるのが強い。</div>
+    </div>
+  </section>
+
+  <!-- EXPORT -->
+  <section id="pageExport" class="grid hidden">
+    <div class="card grid">
+      <div class="row">
+        <div>
+          <label class="muted">範囲（From）</label>
+          <input id="fromDate" type="date">
+        </div>
+        <div>
+          <label class="muted">範囲（To）</label>
+          <input id="toDate" type="date">
+        </div>
+        <div>
+          <label class="muted">月で指定（任意）</label>
+          <input id="exportMonth" type="month">
+        </div>
+        <div>
+          <label class="muted">タグで抽出（任意・部分一致OK）</label>
+          <input id="exportTagFilter" placeholder="例：仕事">
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="buildBtn">まとめテキスト生成</button>
+        <button class="secondary" id="copyBtn">まとめをコピー</button>
+        <button class="secondary" id="downloadTxtBtn">TXT保存</button>
+      </div>
+
+      <div class="row">
+        <button class="secondary" id="backupBtn">バックアップ（JSON）</button>
+        <button class="secondary" id="restoreBtn">復元（JSON Import）</button>
+        <input id="importFile" class="hidden" type="file" accept="application/json">
+      </div>
+
+      <div class="muted small">※タグ抽出を入れると「該当トピックだけ」まとめます（気分は出力しません）。</div>
+    </div>
+
+    <div class="card grid">
+      <div class="muted">生成結果（このまま要約に貼る用）</div>
+      <textarea id="exportText" class="mono" style="min-height:260px" placeholder="ここに生成されます"></textarea>
+    </div>
+  </section>
+
+  <!-- TAGS -->
+  <section id="pageTags" class="grid hidden">
+    <div class="card grid">
+      <div class="row">
+        <div>
+          <label class="muted">タグを追加</label>
+          <input id="newTag" placeholder="例：仕事 / 学び / 健康">
+        </div>
+        <div style="flex:0.6">
+          <label class="muted">　</label>
+          <button id="addTagMasterBtn">追加</button>
+        </div>
+      </div>
+      <div class="muted">短く・名詞で揃えると表記ゆれが起きにくい。</div>
+      <div class="divider"></div>
+      <div class="muted">登録済みタグ（タップで削除）</div>
+      <div class="chips" id="tagMasterList"></div>
+      <div class="muted small">※タグ削除は「今後の選択肢から消すだけ」。過去の日記からは消しません。</div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const KEY_ENTRIES = "diary_entries_v3";
+  const KEY_TAGS = "diary_tags_v1";
+
+  const $ = (id) => document.getElementById(id);
+  const pages = {
+    home: $("pageHome"),
+    edit: $("pageEdit"),
+    export: $("pageExport"),
+    tags: $("pageTags"),
+  };
+
+  const els = {
+    // home
+    homeDate: $("homeDate"),
+    homeMonth: $("homeMonth"),
+    openDateBtn: $("openDateBtn"),
+    openMonthExportBtn: $("openMonthExportBtn"),
+    homeKpi: $("homeKpi"),
+    q: $("q"),
+    tagFilter: $("tagFilter"),
+    stats: $("stats"),
+    list: $("list"),
+
+    // edit
+    date: $("date"),
+    mood: $("mood"),
+    topics: $("topics"),
+    addTopicBtn: $("addTopicBtn"),
+    copyDayBtn: $("copyDayBtn"),
+    saveBtn: $("saveBtn"),
+    clearBtn: $("clearBtn"),
+    deleteBtn: $("deleteBtn"),
+
+    // export
+    fromDate: $("fromDate"),
+    toDate: $("toDate"),
+    exportMonth: $("exportMonth"),
+    exportTagFilter: $("exportTagFilter"),
+    buildBtn: $("buildBtn"),
+    copyBtn: $("copyBtn"),
+    downloadTxtBtn: $("downloadTxtBtn"),
+    exportText: $("exportText"),
+    backupBtn: $("backupBtn"),
+    restoreBtn: $("restoreBtn"),
+    importFile: $("importFile"),
+
+    // tags
+    newTag: $("newTag"),
+    addTagMasterBtn: $("addTagMasterBtn"),
+    tagMasterList: $("tagMasterList"),
+  };
+
+  // local date (timezone-safe)
+  const todayISO = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  };
+
+  function loadEntries() {
+    try { return JSON.parse(localStorage.getItem(KEY_ENTRIES) || "{}"); }
+    catch { return {}; }
+  }
+  function saveEntries(map) {
+    localStorage.setItem(KEY_ENTRIES, JSON.stringify(map));
+  }
+
+  function loadTags() {
+    try {
+      const t = JSON.parse(localStorage.getItem(KEY_TAGS) || "[]");
+      return Array.isArray(t) ? t : [];
+    } catch { return []; }
+  }
+  function saveTags(tags) {
+    localStorage.setItem(KEY_TAGS, JSON.stringify(tags));
+  }
+
+  function showPage(name){
+    Object.keys(pages).forEach(k => pages[k].classList.toggle("hidden", k!==name));
+  }
+
+  function parseHash(){
+    const h = location.hash || "#/edit";
+    const [path, query] = h.replace(/^#/, "").split("?");
+    const params = new URLSearchParams(query || "");
+    return { path, params };
+  }
+
+  function toISO(d){
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function monthToRange(ym){
+    const [y,m] = ym.split("-").map(Number);
+    const from = new Date(y, m-1, 1);
+    const to = new Date(y, m, 0);
+    return [toISO(from), toISO(to)];
+  }
+
+  function escapeHtml(str){
+    return (str||"").replace(/[&<>"']/g, s => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    })[s]);
+  }
+  function escapeAttr(str){
+    return (str||"").replace(/["]/g, "&quot;").replace(/[<]/g, "&lt;");
+  }
+
+  // Data model:
+  // entries[date] = { date, mood, topics:[ {id,title,body,tags:[] } ], updatedAt }
+  function newTopic(){
+    return {
+      id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random().toString(16).slice(2),
+      title: "",
+      body: "",
+      tags: [],
+    };
+  }
+
+  function ensureDayEntry(date){
+    const map = loadEntries();
+    if (!map[date]) {
+      map[date] = { date, mood:"", topics:[newTopic()], updatedAt: new Date().toISOString() };
+      saveEntries(map);
+    } else {
+      if (!Array.isArray(map[date].topics) || map[date].topics.length === 0) {
+        map[date].topics = [newTopic()];
+        saveEntries(map);
+      }
+    }
+    return loadEntries()[date];
+  }
+
+  function setEditForm(date){
+    const entry = ensureDayEntry(date);
+    els.date.value = date;
+    els.mood.value = entry.mood || "";
+    renderTopics(entry);
+  }
+
+  function readEditForm(){
+    const date = els.date.value || todayISO();
+    const entry = ensureDayEntry(date);
+
+    entry.mood = els.mood.value || "";
+    entry.updatedAt = new Date().toISOString();
+
+    const topicEls = Array.from(document.querySelectorAll("[data-topic-id]"));
+    entry.topics = topicEls.map(block => {
+      const id = block.getAttribute("data-topic-id");
+      const title = block.querySelector("[data-field='title']").value.trim();
+      const body = block.querySelector("[data-field='body']").value.trim();
+      const selectedTags = Array.from(block.querySelectorAll("[data-chip-tag].on"))
+        .map(ch => ch.getAttribute("data-chip-tag"))
+        .filter(t => (t||"").trim());
+      return { id, title, body, tags: selectedTags };
+    });
+
+    return entry;
+  }
+
+  function renderTopics(entry){
+    const tagsMaster = loadTags();
+    els.topics.innerHTML = "";
+
+    entry.topics.forEach((t, idx) => {
+      const div = document.createElement("div");
+      div.className = "topic";
+      div.setAttribute("data-topic-id", t.id);
+
+      const chipsHtml = tagsMaster.map(tag => {
+        const on = (t.tags||[]).includes(tag);
+        return `<span class="chip ${on ? "on":""}" data-chip-tag="${escapeAttr(tag)}">${escapeHtml(tag)}</span>`;
+      }).join("");
+
+      div.innerHTML = `
+        <div class="topicHead">
+          <div class="pill">トピック ${idx+1}</div>
+          <div class="right">
+            <button class="ghost" data-action="copyTopic">このトピックをコピー</button>
+            <button class="danger" data-action="removeTopic">削除</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label class="muted">タイトル</label>
+            <input data-field="title" placeholder="例：仕事 / 学び / 生活" value="${escapeAttr(t.title||"")}">
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <div class="row" style="align-items:center">
+            <div>
+              <div class="muted">タグ（選択）</div>
+              <div class="chips" data-field="chips">
+                ${chipsHtml || `<span class="muted">タグが未登録です（タグ管理で追加）</span>`}
+              </div>
+            </div>
+            <div style="flex:0.65;min-width:160px">
+              <div class="muted">　</div>
+              <a href="#/tags" style="text-decoration:none"><button class="secondary" style="width:100%">タグ管理へ</button></a>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <label class="muted">本文</label>
+          <textarea data-field="body" placeholder="ここに書く">${escapeHtml(t.body||"")}</textarea>
+        </div>
+      `;
+
+      div.querySelectorAll("[data-chip-tag]").forEach(ch => {
+        ch.addEventListener("click", () => ch.classList.toggle("on"));
+      });
+
+      div.querySelector("[data-action='removeTopic']").addEventListener("click", () => {
+        const current = readEditForm();
+        if (current.topics.length <= 1) return alert("最後のトピックは削除できない");
+        if (!confirm("このトピックを削除する？")) return;
+        current.topics = current.topics.filter(x => x.id !== t.id);
+        const map = loadEntries();
+        map[current.date] = current;
+        saveEntries(map);
+        renderTopics(current);
+      });
+
+      div.querySelector("[data-action='copyTopic']").addEventListener("click", async () => {
+        const current = readEditForm(); // 未保存の状態も反映
+        const topic = current.topics.find(x => x.id === t.id);
+        const text = buildTextForOneTopic(current.date, topic);
+        await copyToClipboard(text);
+      });
+
+      els.topics.appendChild(div);
+    });
+  }
+
+  // Output text (no mood)
+  function tagsToLine(tags){
+    const cleaned = (tags||[]).map(t => (t||"").trim()).filter(Boolean);
+    return cleaned.length ? `タグ：${cleaned.join("、")}` : "";
+  }
+
+  function buildTextForOneTopic(date, topic){
+    if (!topic) return `=== ${date} ===\n\n(トピックなし)\n`;
+    const lines = [];
+    lines.push(`=== ${date} ===`);
+    lines.push("");
+    const title = (topic.title||"").trim();
+    lines.push(`■ ${title ? `トピック：${title}` : "トピック"}`);
+    const tagLine = tagsToLine(topic.tags);
+    if (tagLine) lines.push(tagLine);
+    lines.push((topic.body||"").trim());
+    lines.push("");
+    return lines.join("\n").trim() + "\n";
+  }
+
+  function buildTextForDay(entry){
+    const lines = [];
+    lines.push(`=== ${entry.date} ===`);
+    lines.push("");
+    (entry.topics||[]).forEach((t, i) => {
+      const title = (t.title||"").trim();
+      lines.push(`■ ${title ? `トピック${i+1}：${title}` : `トピック${i+1}`}`);
+      const tagLine = tagsToLine(t.tags);
+      if (tagLine) lines.push(tagLine);
+      lines.push((t.body||"").trim());
+      lines.push("");
+    });
+    return lines.join("\n").trim() + "\n";
+  }
+
+  // Export: range + optional tag filter (topic-level extraction)
+  function buildExportText(from, to, tagFilterRaw){
+    const tf = (tagFilterRaw||"").trim().toLowerCase();
+    const map = loadEntries();
+
+    const days = Object.entries(map)
+      .map(([date,e]) => ({...e, date}))
+      .filter(e => (!from || e.date >= from) && (!to || e.date <= to))
+      .sort((a,b) => a.date.localeCompare(b.date));
+
+    const picked = [];
+    days.forEach(day => {
+      const topics = (day.topics||[]).filter(t => {
+        if (!tf) return true;
+        return (t.tags||[]).some(tag => (tag||"").toLowerCase().includes(tf));
+      });
+      if (!topics.length) return;
+      picked.push({ date: day.date, topics });
+    });
+
+    const countTopics = picked.reduce((s,d)=>s + d.topics.length, 0);
+    const header = `Diary Export\nRange: ${from || "-"} to ${to || "-"}\nTag: ${tf || "-"}\nCount: ${countTopics}\n`;
+
+    const body = picked.map(d => {
+      const lines = [];
+      lines.push(`=== ${d.date} ===`);
+      lines.push("");
+      d.topics.forEach((t,i) => {
+        const title = (t.title||"").trim();
+        lines.push(`■ ${title ? `トピック${i+1}：${title}` : `トピック${i+1}`}`);
+        const tagLine = tagsToLine(t.tags);
+        if (tagLine) lines.push(tagLine);
+        lines.push((t.body||"").trim());
+        lines.push("");
+      });
+      return lines.join("\n").trim() + "\n";
+    }).join("\n");
+
+    return header + "\n" + body;
+  }
+
+  async function copyToClipboard(text){
+    const t = (text||"").trim();
+    if (!t) return alert("コピーする内容がない");
+    try{
+      await navigator.clipboard.writeText(t);
+      alert("コピーした");
+    }catch{
+      const ta = document.createElement("textarea");
+      ta.value = t;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      try{
+        document.execCommand("copy");
+        alert("コピーした");
+      }catch{
+        alert("コピーに失敗（ブラウザの制限）");
+      }finally{
+        document.body.removeChild(ta);
+      }
+    }
+  }
+
+  // HOME
+  function renderHome(){
+    const map = loadEntries();
+    const allDates = Object.keys(map).sort();
+    const count = allDates.length;
+    const last = allDates[allDates.length-1] || "-";
+    const first = allDates[0] || "-";
+    els.homeKpi.innerHTML = `
+      <span class="pill">日数: ${count}</span>
+      <span class="pill">最古: ${first}</span>
+      <span class="pill">最新: ${last}</span>
+    `;
+    renderList();
+  }
+
+  // Topic-level search result
+  function renderList(){
+    const map = loadEntries();
+    const q = (els.q.value||"").trim().toLowerCase();
+    const tf = (els.tagFilter.value||"").trim().toLowerCase();
+
+    const topics = [];
+    Object.entries(map).forEach(([date, day]) => {
+      (day.topics||[]).forEach((t, idx) => {
+        topics.push({
+          date,
+          topicIndex: idx,
+          topicId: t.id,
+          title: t.title || "",
+          body: t.body || "",
+          tags: t.tags || [],
+          updatedAt: day.updatedAt || ""
+        });
+      });
+    });
+
+    const filtered = topics
+      .sort((a,b) => b.date.localeCompare(a.date))
+      .filter(t => {
+        const hay = `${t.title}\n${t.body}\n${(t.tags||[]).join(" ")}`.toLowerCase();
+        if (q && !hay.includes(q)) return false;
+        if (tf && !(t.tags||[]).some(tag => (tag||"").toLowerCase().includes(tf))) return false;
+        return true;
+      });
+
+    els.stats.textContent = `件数: ${filtered.length}（トピック単位）`;
+    els.list.innerHTML = "";
+
+    filtered.forEach(t => {
+      const preview = (t.body||"").replace(/\n/g," ").slice(0,120) + ((t.body||"").length>120?"…":"");
+      const tagsLine = (t.tags||[]).map(x => "#" + x).join(" ");
+
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+          <div class="pill">${t.date} ・トピック${t.topicIndex+1}</div>
+          <div class="muted">${t.updatedAt ? "更新: " + new Date(t.updatedAt).toLocaleString() : ""}</div>
+        </div>
+        <h3>${escapeHtml((t.title||"").trim() || "(タイトルなし)")}</h3>
+        <div class="muted">${escapeHtml(tagsLine)}</div>
+        <p style="margin-top:8px;">${escapeHtml(preview)}</p>
+        <div class="row" style="margin-top:10px;">
+          <a href="#/edit?date=${encodeURIComponent(t.date)}" style="flex:1;text-decoration:none">
+            <button class="secondary" style="width:100%">この日を開く</button>
+          </a>
+          <button class="secondary" data-copy-topic="${encodeURIComponent(t.date)}|${encodeURIComponent(t.topicId)}" style="flex:1">
+            このトピックをコピー
+          </button>
+        </div>
+      `;
+      els.list.appendChild(div);
+    });
+
+    document.querySelectorAll("[data-copy-topic]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const raw = btn.getAttribute("data-copy-topic");
+        const [dateEnc, idEnc] = raw.split("|");
+        const date = decodeURIComponent(dateEnc);
+        const id = decodeURIComponent(idEnc);
+
+        const map2 = loadEntries();
+        const day = map2[date];
+        if (!day) return alert("データがない");
+
+        const topic = (day.topics||[]).find(x => x.id === id);
+        if (!topic) return alert("トピックが見つからない");
+
+        await copyToClipboard(buildTextForOneTopic(date, topic));
+      });
+    });
+  }
+
+  // TAGS
+  function renderTagMaster(){
+    const tags = loadTags();
+    els.tagMasterList.innerHTML = "";
+    if (!tags.length) {
+      els.tagMasterList.innerHTML = `<span class="muted">まだタグがありません。上で追加してください。</span>`;
+      return;
+    }
+    tags.forEach(tag => {
+      const ch = document.createElement("span");
+      ch.className = "chip";
+      ch.textContent = tag;
+      ch.title = "タップで削除";
+      ch.addEventListener("click", () => {
+        const ok = confirm(`タグ「${tag}」を削除する？（過去データからは消さない）`);
+        if (!ok) return;
+        const next = loadTags().filter(t => t !== tag);
+        saveTags(next);
+        renderTagMaster();
+      });
+      els.tagMasterList.appendChild(ch);
+    });
+  }
+
+  // ROUTING
+  function route(){
+    const { path, params } = parseHash();
+
+    if (path === "/home") {
+      showPage("home");
+      renderHome();
+      return;
+    }
+
+    if (path === "/export") {
+      showPage("export");
+      const month = params.get("month");
+      if (month) {
+        els.exportMonth.value = month;
+        const [from,to] = monthToRange(month);
+        els.fromDate.value = from;
+        els.toDate.value = to;
+      }
+      return;
+    }
+
+    if (path === "/tags") {
+      showPage("tags");
+      renderTagMaster();
+      return;
+    }
+
+    // default edit
+    showPage("edit");
+    const d = params.get("date") || todayISO();
+    setEditForm(d);
+  }
+
+  // INIT defaults
+  const tdy = todayISO();
+  els.homeDate.value = tdy;
+  els.homeMonth.value = tdy.slice(0,7);
+  els.date.value = tdy;
+  els.exportMonth.value = tdy.slice(0,7);
+  const [df, dt] = monthToRange(els.exportMonth.value);
+  els.fromDate.value = df;
+  els.toDate.value = dt;
+
+  // HOME actions
+  els.openDateBtn.addEventListener("click", () => {
+    const d = els.homeDate.value || todayISO();
+    location.hash = `#/edit?date=${encodeURIComponent(d)}`;
+  });
+  els.openMonthExportBtn.addEventListener("click", () => {
+    const m = els.homeMonth.value || todayISO().slice(0,7);
+    location.hash = `#/export?month=${encodeURIComponent(m)}`;
+  });
+
+  // HOME search
+  [els.q, els.tagFilter].forEach(el => el.addEventListener("input", renderList));
+
+  // EDIT actions
+  els.date.addEventListener("change", () => {
+    const d = els.date.value || todayISO();
+    location.hash = `#/edit?date=${encodeURIComponent(d)}`;
+  });
+
+  els.addTopicBtn.addEventListener("click", () => {
+    const entry = readEditForm();
+    entry.topics.push(newTopic());
+    const map = loadEntries();
+    map[entry.date] = entry;
+    saveEntries(map);
+    renderTopics(entry);
+    setTimeout(() => window.scrollTo({top: document.body.scrollHeight, behavior:"smooth"}), 50);
+  });
+
+  els.saveBtn.addEventListener("click", () => {
+    const entry = readEditForm();
+    const hasContent = (entry.topics||[]).some(t => (t.title||"").trim() || (t.body||"").trim() || (t.tags||[]).length);
+    if (!hasContent) return alert("何か書くか、タグを付けてから保存して");
+    const map = loadEntries();
+    map[entry.date] = entry;
+    saveEntries(map);
+    alert("保存した");
+  });
+
+  els.clearBtn.addEventListener("click", () => {
+    document.querySelectorAll("[data-topic-id]").forEach(block => {
+      block.querySelector("[data-field='title']").value = "";
+      block.querySelector("[data-field='body']").value = "";
+      block.querySelectorAll("[data-chip-tag].on").forEach(ch => ch.classList.remove("on"));
+    });
+    els.mood.value = "";
+  });
+
+  els.deleteBtn.addEventListener("click", () => {
+    const d = els.date.value || todayISO();
+    const map = loadEntries();
+    if (!map[d]) return alert("この日付のデータはない");
+    if (!confirm(`${d} を丸ごと削除する？`)) return;
+    delete map[d];
+    saveEntries(map);
+    // 初期化して表示
+    ensureDayEntry(d);
+    setEditForm(d);
+    alert("削除した");
+  });
+
+  els.copyDayBtn.addEventListener("click", async () => {
+    const entry = readEditForm(); // 未保存でも現状をコピー
+    await copyToClipboard(buildTextForDay(entry));
+  });
+
+  // EXPORT actions
+  els.exportMonth.addEventListener("change", () => {
+    const m = els.exportMonth.value;
+    if (!m) return;
+    const [from,to] = monthToRange(m);
+    els.fromDate.value = from;
+    els.toDate.value = to;
+    location.hash = `#/export?month=${encodeURIComponent(m)}`;
+  });
+
+  els.buildBtn.addEventListener("click", () => {
+    const from = els.fromDate.value || "";
+    const to = els.toDate.value || "";
+    const tf = els.exportTagFilter.value || "";
+    els.exportText.value = buildExportText(from, to, tf);
+  });
+
+  els.copyBtn.addEventListener("click", async () => {
+    await copyToClipboard(els.exportText.value);
+  });
+
+  els.downloadTxtBtn.addEventListener("click", () => {
+    const text = (els.exportText.value||"").trim();
+    if (!text) return alert("先に生成して");
+    const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `diary_export_${todayISO()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Backup/Restore (JSON)
+  els.backupBtn.addEventListener("click", () => {
+    const data = localStorage.getItem(KEY_ENTRIES) || "{}";
+    const blob = new Blob([data], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `diary_backup_${todayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  els.restoreBtn.addEventListener("click", () => els.importFile.click());
+  els.importFile.addEventListener("change", async () => {
+    const file = els.importFile.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    let obj;
+    try { obj = JSON.parse(text); } catch { return alert("JSONが壊れてる"); }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) return alert("形式が違う");
+    localStorage.setItem(KEY_ENTRIES, JSON.stringify(obj));
+    alert("復元した（端末内に反映）");
+    els.importFile.value = "";
+  });
+
+  // TAGS actions
+  els.addTagMasterBtn.addEventListener("click", () => {
+    const raw = (els.newTag.value || "").trim();
+    if (!raw) return alert("タグ名を入力して");
+    const tag = raw.replace(/\s+/g, " ");
+    const tags = loadTags();
+    if (tags.includes(tag)) return alert("同じタグが既にある");
+    tags.push(tag);
+    tags.sort((a,b)=>a.localeCompare(b,'ja'));
+    saveTags(tags);
+    els.newTag.value = "";
+    renderTagMaster();
+  });
+
+  els.newTag.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      els.addTagMasterBtn.click();
+    }
+  });
+
+  // Listen for hash route
+  window.addEventListener("hashchange", route);
+
+  // Start: open today's edit by default (スマホ最適)
+  if (!location.hash) location.hash = `#/edit?date=${encodeURIComponent(todayISO())}`;
+  route();
+</script>
+</body>
+</html>
